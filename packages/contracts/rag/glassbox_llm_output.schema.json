@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tg-agg.local/schemas/glassbox_llm_output.schema.json",
+  "title": "RagSynthesisOutput",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["mode", "claims", "stance_comparison_matrix"],
+  "properties": {
+    "mode": { "type": "string", "enum": ["qa", "digest", "stance_matrix"] },
+    "answer_status": { "type": "string", "enum": ["direct", "indirect", "not_found"] },
+    "direct_answer": { "type": "string" },
+    "claims": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["claim_id", "topic_group", "statement", "citations"],
+        "properties": {
+          "claim_id": { "type": "string", "pattern": "^c[0-9]+$" },
+          "topic_group": { "type": "string" },
+          "statement": { "type": "string", "minLength": 5 },
+          "citations": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 3,
+            "items": { "$ref": "#/$defs/CitationRef" }
+          }
+        }
+      }
+    },
+    "stance_comparison_matrix": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["aspect", "pro_points", "con_points"],
+        "properties": {
+          "aspect": { "type": "string" },
+          "pro_points": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/StanceArgument" }
+          },
+          "con_points": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/StanceArgument" }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "CitationRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["post_id", "sentence_id", "exact_quote"],
+      "properties": {
+        "post_id": { "type": "integer", "minimum": 1 },
+        "sentence_id": { "type": "integer", "minimum": 1 },
+        "exact_quote": { "type": "string", "minLength": 3 }
+      }
+    },
+    "StanceArgument": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["claim_id", "statement", "citations"],
+      "properties": {
+        "claim_id": { "type": "string" },
+        "statement": { "type": "string" },
+        "citations": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "items": { "$ref": "#/$defs/CitationRef" }
+        }
+      }
+    }
+  }
+}

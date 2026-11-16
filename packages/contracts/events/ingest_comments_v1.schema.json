@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tg-agg.local/schemas/ingest_comments_v1.schema.json",
+  "title": "IngestCommentsDeltaEventV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "event_id", "channel_id", "post_msg_id", "linked_chat_id", "total_replies_count", "comments"],
+  "properties": {
+    "schema_version": { "type": "string", "const": "1.0" },
+    "event_id": { "type": "string", "format": "uuid" },
+    "channel_id": { "type": "integer" },
+    "post_msg_id": { "type": "integer" },
+    "linked_chat_id": { "type": "integer" },
+    "total_replies_count": { "type": "integer", "minimum": 0 },
+    "comments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["comment_msg_id", "author_peer_hash", "published_at", "text_raw", "entities"],
+        "properties": {
+          "comment_msg_id": { "type": "integer" },
+          "reply_to_msg_id": { "type": ["integer", "null"] },
+          "author_peer_hash": { "type": "string", "minLength": 16, "maxLength": 64 },
+          "published_at": { "type": "string", "format": "date-time" },
+          "edit_date": { "type": ["string", "null"], "format": "date-time" },
+          "text_raw": { "type": "string" },
+          "entities": { "type": "array", "items": { "type": "object" } }
+        }
+      }
+    }
+  }
+}

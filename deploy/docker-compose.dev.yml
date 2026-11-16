@@ -1,0 +1,138 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-tg_agg_dev}
+      POSTGRES_USER: ${POSTGRES_USER:-tg_agg}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dev_password_change_me}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./postgres/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-tg_agg} -d ${POSTGRES_DB:-tg_agg_dev}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "1gb", "--maxmemory-policy", "noeviction"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  qdrant:
+    image: ${QDRANT_IMAGE:-qdrant/qdrant:v1.19.0}
+    ports:
+      - "${QDRANT_HTTP_PORT:-6333}:6333"
+      - "${QDRANT_GRPC_PORT:-6334}:6334"
+    volumes:
+      - qdrant_storage:/qdrant/storage
+    environment:
+      QDRANT__SERVICE__GRPC_PORT: 6334
+
+  ingestion-go:
+    profiles: ["app"]
+    network_mode: "host"
+    build:
+      context: ../services/ingestion-go
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-tg_agg}:${POSTGRES_PASSWORD:-dev_password_change_me}@127.0.0.1:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-tg_agg_dev}?sslmode=disable
+      REDIS_ADDR: 127.0.0.1:${REDIS_PORT:-6379}
+      BBOLT_DIR: /var/lib/ingestor/bbolt
+      MEDIA_CACHE_DIR: /var/lib/ingestor/media_cache
+      MEDIA_CACHE_TTL_HOURS: ${MEDIA_CACHE_TTL_HOURS:-24}
+      ALBUM_BUFFER_MS: ${ALBUM_BUFFER_MS:-1500}
+      HTTP_LISTEN_ADDR: ":8081"
+      TG_APP_ID: ${TG_APP_ID:-}
+      TG_APP_HASH: ${TG_APP_HASH:-}
+      SOCKS5_PROXY_URL: ${SOCKS5_PROXY_URL:-}
+    volumes:
+      - bbolt_data:/var/lib/ingestor/bbolt
+      - media_cache_24h:/var/lib/ingestor/media_cache
+
+  ml-pipeline-py:
+    profiles: ["app"]
+    network_mode: "host"
+    build:
+      context: ../services/ml-pipeline-py
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+      ingestion-go:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-tg_agg}:${POSTGRES_PASSWORD:-dev_password_change_me}@127.0.0.1:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-tg_agg_dev}
+      REDIS_URL: redis://127.0.0.1:${REDIS_PORT:-6379}/0
+      QDRANT_URL: http://127.0.0.1:${QDRANT_HTTP_PORT:-6333}
+      QDRANT_GRPC_URL: 127.0.0.1:${QDRANT_GRPC_PORT:-6334}
+      QDRANT_COLLECTION: ${QDRANT_COLLECTION:-public_channels_v1}
+      INGESTION_INTERNAL_URL: http://127.0.0.1:8081
+      EMBEDDING_MODEL_ID: ${EMBEDDING_MODEL_ID:-Qwen/Qwen3-Embedding-0.6B}
+      EMBEDDING_DIM_MRL: ${EMBEDDING_DIM_MRL:-512}
+      RERANKER_MODEL_ID: ${RERANKER_MODEL_ID:-Qwen/Qwen3-Reranker-0.6B}
+      COLDSTART_SPAM_MODEL_ID: ${COLDSTART_SPAM_MODEL_ID:-deepvk/GeRaCl-USER2-base}
+      COMMENT_RESCUE_MODEL_ID: ${COMMENT_RESCUE_MODEL_ID:-deepvk/RuModernBERT-small}
+      NLI_GATE_MODEL_ID: ${NLI_GATE_MODEL_ID:-MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7}
+      CLUSTERING_TAU_LOW: ${CLUSTERING_TAU_LOW:-0.72}
+      CLUSTERING_TAU_HIGH: ${CLUSTERING_TAU_HIGH:-0.88}
+      RERANK_MERGE_THRESHOLD: ${RERANK_MERGE_THRESHOLD:-0.85}
+      SW_SIMILARITY_THRESHOLD: ${SW_SIMILARITY_THRESHOLD:-0.85}
+      NLI_ENTAILMENT_THRESHOLD: ${NLI_ENTAILMENT_THRESHOLD:-0.75}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
+
+  web-client:
+    profiles: ["app"]
+    network_mode: "host"
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    build:
+      context: ../apps/web-client
+    depends_on:
+      ml-pipeline-py:
+        condition: service_started
+    environment:
+      HOSTNAME: "0.0.0.0"
+      PORT: "3000"
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
+      INTERNAL_API_BASE_URL: http://127.0.0.1:8000
+      NODE_OPTIONS: "--dns-result-order=ipv4first --no-network-family-autoselection"
+      LIVE_FETCH_CONCURRENCY: ${LIVE_FETCH_CONCURRENCY:-2}
+      LIVE_FETCH_SKIP_DIRECT_TME: ${LIVE_FETCH_SKIP_DIRECT_TME:-false}
+      SOCKS5_PROXY_URL: ${SOCKS5_PROXY_URL:-}
+      HTTPS_PROXY: ${HTTPS_PROXY:-}
+      HTTP_PROXY: ${HTTP_PROXY:-}
+      ALL_PROXY: ${ALL_PROXY:-}
+
+networks:
+  default:
+    driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: "1280"
+    ipam:
+      config:
+        - subnet: 10.254.254.0/24
+
+volumes:
+  pg_data:
+  redis_data:
+  qdrant_storage:
+  bbolt_data:
+  media_cache_24h:

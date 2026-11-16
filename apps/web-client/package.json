@@ -1,0 +1,32 @@
+{
+  "name": "@tg-agg/web-client",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start -p 3000",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@telegraf/entity": "*",
+    "lowlight": "*",
+    "next": "^15.3.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "shiki": "*"
+  },
+  "devDependencies": {
+    "@testing-library/react": "*",
+    "@types/bun": "*",
+    "@types/hast": "*",
+    "@types/jsdom": "*",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "jsdom": "*",
+    "typescript": "^5.8.0"
+  }
+}

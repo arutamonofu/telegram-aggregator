@@ -1,0 +1,37 @@
+[project]
+name = "ml-pipeline-py"
+version = "0.1.0"
+description = "ML preprocessing, spam filtering, single-pass clustering and Qdrant indexing service"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn>=0.34.0",
+    "pydantic>=2.10.0",
+    "pydantic-settings>=2.7.0",
+    "psycopg[binary]>=3.2.0",
+    "qdrant-client>=1.19.0",
+    "redis>=5.0.0",
+    "numpy>=2.0.0",
+    "scipy>=1.14.0",
+    "pillow>=11.0.0",
+    "onnxruntime>=1.20.0",
+    "tokenizers>=0.21.0",
+    "transformers>=5.0.0",
+    "datasketch>=2.0.0",
+    "simhash>=2.1.2",
+    "imagehash>=4.3.2",
+    "safetensors>=0.4.5",
+    "xxhash>=3.5.0",
+    "httpx>=0.28.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.25.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+asyncio_mode = "auto"
+testpaths = ["tests"]

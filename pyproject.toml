@@ -1,0 +1,14 @@
+[project]
+name = "telegram-aggregator"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "psycopg[binary]>=3.2.0",
+    "qdrant-client>=1.17.0",
+    "redis>=5.0.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = [".", "services/ml-pipeline-py"]
+asyncio_mode = "auto"
+testpaths = ["services/ml-pipeline-py/tests"]

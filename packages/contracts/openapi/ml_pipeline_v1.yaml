@@ -1,0 +1,118 @@
+openapi: 3.1.0
+info:
+  title: ml-pipeline-py API
+  version: 0.1.0
+  description: Glass-box RAG SSE streaming, Clustered Digests, Stance-Stratified Synthesis, and ingestion endpoints.
+paths:
+  /health:
+    get:
+      summary: Service health and loaded backends
+      responses:
+        "200":
+          description: Service status JSON
+  /api/v1/rag/query:
+    post:
+      summary: Execute Glass-box RAG or Stance-Stratified Synthesis over SSE
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RagQueryRequest"
+      responses:
+        "200":
+          description: Server-Sent Events stream (`pipeline_stage`, `verified_claim`, `stance_row`, `source_posts`, `done`, `: keep-alive`)
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        "429":
+          description: Quota or rate limit exceeded (FinOps cascade / 30 RAG trial & basic limit)
+  /api/v1/feed:
+    get:
+      summary: Personalized clustered digest or clean chronological originals feed
+      parameters:
+        - name: user_id
+          in: query
+          schema:
+            type: string
+            default: anonymous
+        - name: mode
+          in: query
+          schema:
+            type: string
+            enum: [digest, clean_originals]
+            default: digest
+        - name: channel_ids
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+        - name: cluster_ids
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+        - name: plan_tier
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 30
+      responses:
+        "200":
+          description: Digest or clean originals feed payload
+components:
+  schemas:
+    RagQueryRequest:
+      type: object
+      required: [user_id, query]
+      properties:
+        user_id:
+          type: string
+        query:
+          type: string
+        mode:
+          type: string
+          enum: [qa, digest, stance_matrix]
+          default: qa
+        channel_ids:
+          type: array
+          items:
+            oneOf:
+              - type: integer
+              - type: string
+        time_window_days:
+          type: integer
+          default: 90
+        cluster_id:
+          type: string
+          nullable: true
+        plan_tier:
+          type: string
+          nullable: true
+        deep_analysis:
+          type: boolean
+          default: false
+        is_private_contour:
+          type: boolean
+          default: false
+        tenant_id:
+          type: string
+          nullable: true
+        tenant_salt:
+          type: string
+          nullable: true
+        preloaded_posts:
+          type: array
+          nullable: true
+          items:
+            type: object
+            additionalProperties: true

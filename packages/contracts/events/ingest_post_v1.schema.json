@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tg-agg.local/schemas/ingest_post_v1.schema.json",
+  "title": "IngestPostEventV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "event_id",
+    "event_type",
+    "channel_id",
+    "channel_title",
+    "msg_id",
+    "published_at",
+    "edit_date",
+    "text_raw",
+    "entities",
+    "replies",
+    "media_items"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "1.0" },
+    "event_id": { "type": "string", "format": "uuid" },
+    "event_type": { "type": "string", "enum": ["post_new", "post_edit"] },
+    "channel_id": { "type": "integer", "minimum": 1 },
+    "channel_username": { "type": ["string", "null"] },
+    "channel_title": { "type": "string", "minLength": 1 },
+    "msg_id": { "type": "integer", "minimum": 1 },
+    "grouped_id": { "type": ["integer", "null"] },
+    "album_msg_ids": {
+      "type": "array",
+      "items": { "type": "integer", "minimum": 1 }
+    },
+    "published_at": { "type": "string", "format": "date-time" },
+    "edit_date": { "type": ["string", "null"], "format": "date-time" },
+    "text_raw": { "type": "string" },
+    "show_caption_above_media": { "type": "boolean", "default": false },
+    "views": { "type": "integer", "minimum": 0, "default": 0 },
+    "forwards": { "type": "integer", "minimum": 0, "default": 0 },
+    "entities": {
+      "type": "array",
+      "description": "Сущности Telegram MTProto Layer 225+; offset и length строго в UTF-16 code units.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "offset", "length"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "bold", "italic", "underline", "strikethrough", "spoiler",
+              "code", "pre", "blockquote", "text_url", "url", "mention",
+              "hashtag", "cashtag", "custom_emoji", "formatted_date",
+              "diff_insert", "diff_delete", "diff_replace"
+            ]
+          },
+          "offset": { "type": "integer", "minimum": 0 },
+          "length": { "type": "integer", "minimum": 1 },
+          "language": { "type": ["string", "null"], "description": "Только для type='pre'" },
+          "url": { "type": ["string", "null"], "description": "Только для type='text_url'" },
+          "collapsed": { "type": ["boolean", "null"], "description": "Только для type='blockquote'" },
+          "document_id": { "type": ["string", "null"], "description": "Строковый BIGINT для type='custom_emoji'" },
+          "unix_time": { "type": ["integer", "null"], "description": "Для type='formatted_date'" },
+          "date_flags": { "type": ["integer", "null"], "description": "Битовая маска formatted_date (Bot API 9.5)" },
+          "old_text": { "type": ["string", "null"], "description": "Для DiffReplace" }
+        }
+      }
+    },
+    "replies": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["comments_enabled", "replies_count", "replies_max_id"],
+      "properties": {
+        "comments_enabled": { "type": "boolean" },
+        "linked_chat_id": { "type": ["integer", "null"] },
+        "replies_count": { "type": "integer", "minimum": 0 },
+        "replies_max_id": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "media_items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "file_id", "tg_id", "access_hash", "dc_id", "media_kind",
+          "thumb_size", "file_reference_b64", "file_size"
+        ],
+        "properties": {
+          "file_id": { "type": "string", "description": "{media_kind}:{dc_id}:{tg_id}:{thumb_size}" },
+          "tg_id": { "type": "integer" },
+          "access_hash": { "type": "integer" },
+          "dc_id": { "type": "integer", "minimum": 1, "maximum": 5 },
+          "media_kind": { "type": "string", "enum": ["photo", "document", "video", "voice", "sticker"] },
+          "thumb_size": { "type": "string", "description": "Строковый type из PhotoSize (или '' для оригинала)" },
+          "file_reference_b64": { "type": "string" },
+          "mime_type": { "type": ["string", "null"] },
+          "file_size": { "type": "integer", "minimum": 0 },
+          "width": { "type": ["integer", "null"] },
+          "height": { "type": ["integer", "null"] },
+          "duration_sec": { "type": ["integer", "null"] },
+          "caption": { "type": ["string", "null"], "description": "Индивидуальная подпись слота альбома" },
+          "stripped_thumb_b64": { "type": ["string", "null"] }
+        }
+      }
+    }
+  }
+}
